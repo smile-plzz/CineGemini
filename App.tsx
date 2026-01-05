@@ -1,30 +1,33 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Search, Heart, Home, TrendingUp, 
-  Film, Tv, Settings, Compass, Newspaper, ChevronUp, Info, Clapperboard, Filter, History, Sparkles, Zap, Ghost, Brain, Coffee, Rocket, Trash2
+  Film, Tv, Compass, Newspaper, ChevronUp, Clapperboard, History, Sparkles, Zap, Ghost, Brain, Coffee, Rocket, Trash2, SlidersHorizontal, Info, Play
 } from 'lucide-react';
 import { Movie, WatchlistItem, SearchResult, WatchHistory } from './types';
 import MovieCard from './components/MovieCard';
 import DetailModal from './components/DetailModal';
 import VideoPlayer from './components/VideoPlayer';
 import NewsSection from './components/NewsSection';
-import { gemini } from './services/geminiService';
+import { gemini, SearchFilters } from './services/geminiService';
 
 type Tab = 'home' | 'movies' | 'tv' | 'watchlist' | 'trending' | 'news' | 'history' | 'dimensions';
 
 const MOODS = [
-  { id: 'Adrenaline', label: 'Adrenaline', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-500/10', sub: 'High stakes and fast pace' },
-  { id: 'Noir', label: 'Noir', icon: Ghost, color: 'text-purple-500', bg: 'bg-purple-500/10', sub: 'Dark themes and deep mysteries' },
-  { id: 'Cerebral', label: 'Cerebral', icon: Brain, color: 'text-blue-500', bg: 'bg-blue-500/10', sub: 'Mind-bending narratives' },
-  { id: 'Zen', label: 'Zen', icon: Coffee, color: 'text-green-500', bg: 'bg-green-500/10', sub: 'Relaxed and comforting cinema' },
-  { id: 'Eerie', label: 'Eerie', icon: Sparkles, color: 'text-red-500', bg: 'bg-red-500/10', sub: 'Supernatural and atmospheric' }
+  { id: 'Adrenaline', label: 'Adrenaline', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { id: 'Noir', label: 'Noir', icon: Ghost, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { id: 'Cerebral', label: 'Cerebral', icon: Brain, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { id: 'Zen', label: 'Zen', icon: Coffee, color: 'text-green-500', bg: 'bg-green-500/10' },
+  { id: 'Eerie', label: 'Eerie', icon: Sparkles, color: 'text-red-500', bg: 'bg-red-500/10' }
 ];
+
+const GENRES = ["Action", "Sci-Fi", "Comedy", "Horror", "Drama", "Thriller", "Adventure", "Animation", "Crime"];
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [activeDimension, setActiveDimension] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({ type: 'all', year: '', genre: '' });
+  const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -32,225 +35,258 @@ const App: React.FC = () => {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [streamingMovie, setStreamingMovie] = useState<Movie | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-
+  
+  // Persistence Engine
   useEffect(() => {
-    const savedWatchlist = localStorage.getItem('cv-watchlist');
-    const savedHistory = localStorage.getItem('cv-history');
+    const savedWatchlist = localStorage.getItem('cv-vault');
+    const savedHistory = localStorage.getItem('cv-logs');
     if (savedWatchlist) try { setWatchlist(JSON.parse(savedWatchlist)); } catch (e) {}
     if (savedHistory) try { setWatchHistory(JSON.parse(savedHistory)); } catch (e) {}
   }, []);
 
-  useEffect(() => { localStorage.setItem('cv-watchlist', JSON.stringify(watchlist)); }, [watchlist]);
-  useEffect(() => { localStorage.setItem('cv-history', JSON.stringify(watchHistory)); }, [watchHistory]);
+  useEffect(() => { localStorage.setItem('cv-vault', JSON.stringify(watchlist)); }, [watchlist]);
+  useEffect(() => { localStorage.setItem('cv-logs', JSON.stringify(watchHistory)); }, [watchHistory]);
 
-  const executeSearch = useCallback(async (query: string, type: any = 'all') => {
-    if (!query.trim() || isLoading) return;
+  const triggerDiscovery = useCallback(async (query: string, filters: SearchFilters) => {
     setIsLoading(true);
     try {
-      const results = await gemini.searchEntertainment(query, type);
+      const results = await gemini.searchEntertainment(query, filters);
       setSearchResult(results);
     } catch (err) {
-      console.error("Search engine failed:", err);
+      console.error("Discovery module fault:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
-
-  useEffect(() => {
-    const queryMap: Record<string, { q: string, type: any }> = {
-      movies: { q: "Cinema", type: "movie" },
-      tv: { q: "Series", type: "series" },
-      trending: { q: "Trending", type: "all" },
-      home: { q: "Popular", type: "all" },
-      dimensions: { q: activeDimension || "Adrenaline", type: "all" }
-    };
-
-    if (queryMap[activeTab] && !['watchlist', 'news', 'history'].includes(activeTab)) {
-      executeSearch(queryMap[activeTab].q, queryMap[activeTab].type);
-    }
-    
-    if (activeTab !== 'news') window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [activeTab, activeDimension, executeSearch]);
-
-  useEffect(() => {
-    const handleScroll = () => setShowScrollTop(window.scrollY > 800);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const addToHistory = (movie: Movie) => {
-    setWatchHistory(prev => {
-      const filtered = prev.filter(item => item.id !== movie.id);
-      return [{ ...movie, watchedAt: Date.now() }, ...filtered].slice(0, 50);
-    });
-  };
+  // Contextual Auto-Fetcher
+  useEffect(() => {
+    if (['watchlist', 'news', 'history'].includes(activeTab)) return;
 
-  const clearHistory = () => {
-    if(confirm("Permanently wipe your cinematic logs?")) {
-        setWatchHistory([]);
-        localStorage.removeItem('cv-history');
+    let targetQuery = searchQuery;
+    let targetFilters = { ...searchFilters };
+
+    if (!searchQuery) {
+      const tabMappings: Record<string, string> = {
+        home: 'Popular',
+        movies: 'Cinema',
+        tv: 'Series',
+        trending: 'Trending',
+        dimensions: 'Adrenaline'
+      };
+      targetQuery = tabMappings[activeTab] || 'Popular';
+      
+      // Enforce type constraints based on tab if not manually searching
+      if (activeTab === 'movies') targetFilters.type = 'movie';
+      if (activeTab === 'tv') targetFilters.type = 'series';
     }
+
+    triggerDiscovery(targetQuery, targetFilters);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab, triggerDiscovery, searchFilters]);
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setSearchQuery(''); // Reset search query on tab change to trigger auto-fetch with defaults
+    setSearchFilters({ type: 'all', year: '', genre: '' }); // Reset filters for clean tab state
   };
 
-  const toggleWatchlist = (movie: Movie) => {
-    setWatchlist(prev => {
-      const exists = prev.find(item => item.id === movie.id);
-      if (exists) return prev.filter(item => item.id !== movie.id);
-      return [...prev, { ...movie, addedAt: Date.now() }];
+  const handleManualSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    triggerDiscovery(searchQuery || 'Popular', searchFilters);
+  };
+
+  const applyFilters = (f: Partial<SearchFilters>) => {
+    setSearchFilters(prev => ({ ...prev, ...f }));
+  };
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 800);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const addToHistory = (m: Movie) => {
+    setWatchHistory(prev => {
+      const filtered = prev.filter(item => item.id !== m.id);
+      return [{ ...m, watchedAt: Date.now() }, ...filtered].slice(0, 30);
     });
   };
 
-  const isInWatchlist = useMemo(() => (id: string) => watchlist.some(item => item.id === id), [watchlist]);
+  const toggleWatchlist = (m: Movie) => {
+    setWatchlist(prev => {
+      const exists = prev.find(item => item.id === m.id);
+      if (exists) return prev.filter(item => item.id !== m.id);
+      return [...prev, { ...m, addedAt: Date.now() }];
+    });
+  };
+
+  const isInWatchlist = useMemo(() => (id: string) => watchlist.some(i => i.id === id), [watchlist]);
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Lobby' },
     { id: 'trending', icon: TrendingUp, label: 'Trends' },
-    { id: 'dimensions', icon: Compass, label: 'Explore' },
+    { id: 'dimensions', icon: Compass, label: 'Moods' },
     { id: 'movies', icon: Film, label: 'Cinema' },
     { id: 'tv', icon: Tv, label: 'Series' },
     { id: 'news', icon: Newspaper, label: 'Pulse' },
     { id: 'watchlist', icon: Heart, label: 'Vault' },
-    { id: 'history', icon: History, label: 'History' },
+    { id: 'history', icon: History, label: 'Logs' },
   ];
 
   return (
     <div className="flex min-h-screen bg-[#050505] text-white selection:bg-blue-600/40 font-sans tracking-tight">
-      <aside className="hidden lg:flex w-80 fixed inset-y-0 left-0 bg-[#080808] border-r border-white/5 flex-col z-40">
-        <div className="p-10 flex items-center gap-5">
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-600/30 border border-white/10">
-            <Clapperboard size={28} />
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-72 fixed inset-y-0 left-0 bg-[#080808] border-r border-white/5 flex-col z-50">
+        <div className="p-10 flex items-center gap-4">
+          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-600/30 border border-white/10">
+            <Rocket size={20} />
           </div>
-          <span className="text-xl font-black tracking-tighter italic uppercase leading-none">Cine<br/><span className="text-blue-500 text-sm">Vault Premium</span></span>
+          <span className="text-xl font-black italic tracking-tighter uppercase leading-none">Cine<span className="text-blue-500">Vault</span></span>
         </div>
 
-        <nav className="flex-1 px-6 space-y-2 overflow-y-auto custom-scrollbar pb-10">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id as Tab); if(item.id !== 'dimensions') setActiveDimension(null); }}
-              className={`w-full flex items-center gap-5 px-6 py-4 rounded-2xl transition-all duration-300 group relative ${
+              onClick={() => handleTabChange(item.id as Tab)}
+              className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-300 group ${
                 activeTab === item.id 
-                ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' 
+                ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20' 
                 : 'text-gray-500 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <item.icon size={20} className={activeTab === item.id ? '' : 'group-hover:scale-110 transition-transform'} />
-              <span className="font-black uppercase tracking-[0.2em] text-[10px]">{item.label}</span>
-              {activeTab === item.id && <div className="absolute right-4 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_8px_white]" />}
+              <item.icon size={18} className={activeTab === item.id ? 'scale-110' : 'group-hover:scale-110 transition-transform'} />
+              <span className="font-black uppercase tracking-[0.2em] text-[9px]">{item.label}</span>
             </button>
           ))}
         </nav>
-        
-        <div className="p-8 border-t border-white/5">
-          <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-500 flex items-center justify-center font-black text-xs">A</div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] font-black truncate">Archivist Node</p>
-              <p className="text-[8px] text-gray-600 font-bold uppercase tracking-widest">Neural v4.2</p>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      <main className="flex-1 lg:ml-80 relative pb-32 lg:pb-16 max-w-full overflow-x-hidden">
-        <header className="sticky top-0 z-[45] bg-[#050505]/95 backdrop-blur-3xl h-24 flex items-center px-10 lg:px-20 border-b border-white/5">
-          <div className="flex-1 max-w-4xl relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-blue-500 transition-colors" size={18} />
-            <input 
-              type="text"
-              placeholder="Query the Archive Database..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-700 font-bold"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery)}
-            />
+      {/* Main Panel */}
+      <main className="flex-1 lg:ml-72 relative pb-24 lg:pb-12 max-w-full">
+        <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-3xl border-b border-white/5 px-6 lg:px-12 py-5">
+          <div className="max-w-6xl mx-auto flex items-center gap-4">
+            <form onSubmit={handleManualSearch} className="flex-1 relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-blue-500 transition-colors" size={16} />
+              <input 
+                type="text"
+                placeholder="Query the cinematic archive..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all font-bold"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              aria-label="Toggle Filters"
+            >
+              <SlidersHorizontal size={18} />
+            </button>
           </div>
+
+          {showFilters && (
+            <div className="max-w-6xl mx-auto pt-6 flex flex-wrap gap-4 animate-in slide-in-from-top-4 duration-500">
+              <div className="flex-1 min-w-[150px] space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Media Origin</p>
+                <div className="flex bg-white/5 rounded-xl border border-white/10 p-1">
+                  {['all', 'movie', 'series'].map(t => (
+                    <button 
+                      key={t}
+                      onClick={() => applyFilters({ type: t as any })}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${searchFilters.type === t ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500'}`}
+                    >
+                      {t === 'series' ? 'TV' : t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="w-28 space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Era</p>
+                <input 
+                  type="number" 
+                  placeholder="2024"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  value={searchFilters.year}
+                  onChange={(e) => applyFilters({ year: e.target.value })}
+                />
+              </div>
+              <div className="flex-1 min-w-[180px] space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Genre Alignment</p>
+                <select 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-xs focus:outline-none"
+                  value={searchFilters.genre}
+                  onChange={(e) => applyFilters({ genre: e.target.value })}
+                >
+                  <option value="">All Genres</option>
+                  {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
         </header>
 
-        <div className="p-10 lg:p-20 max-w-[1920px] mx-auto space-y-24">
+        <div className="p-6 lg:p-12 max-w-6xl mx-auto space-y-20 animate-cinematic">
           {activeTab === 'news' ? <NewsSection /> : (
             <>
               {activeTab === 'dimensions' && (
-                <section className="space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
-                  <div className="space-y-2">
-                    <h2 className="text-6xl font-black tracking-tighter uppercase italic">Atmospheric <span className="text-blue-500">Filters</span></h2>
-                    <p className="text-gray-500 font-black text-[10px] uppercase tracking-[0.4em]">Shift dimensions for neural mood retrieval</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                    {MOODS.map(mood => (
-                      <button 
-                        key={mood.id}
-                        onClick={() => setActiveDimension(mood.id)}
-                        className={`flex flex-col items-start gap-4 p-8 rounded-[2rem] transition-all border text-left group ${
-                          activeDimension === mood.id 
-                          ? `bg-blue-600 border-blue-500 text-white shadow-2xl scale-[1.02]` 
-                          : `bg-white/5 border-white/5 text-gray-400 hover:border-white/20 hover:bg-white/10`
-                        }`}
-                      >
-                        <mood.icon size={32} className={activeDimension === mood.id ? 'text-white' : mood.color} />
-                        <div>
-                           <span className="block font-black uppercase tracking-widest text-sm mb-1">{mood.label}</span>
-                           <span className={`text-[9px] font-bold uppercase tracking-wider opacity-60 ${activeDimension === mood.id ? 'text-white' : 'text-gray-500'}`}>{mood.sub}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {MOODS.map(m => (
+                    <button 
+                      key={m.id}
+                      onClick={() => { setSearchQuery(m.id); triggerDiscovery(m.id, searchFilters); }}
+                      className={`flex flex-col items-center gap-4 p-6 rounded-[2rem] border transition-all group ${searchQuery === m.id ? 'bg-blue-600 border-blue-500 text-white shadow-2xl' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                    >
+                      <m.icon size={28} className={searchQuery === m.id ? 'text-white' : m.color} />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
               )}
 
               {activeTab === 'home' && watchHistory.length > 0 && (
-                <section className="space-y-12 animate-in slide-in-from-left-8 duration-700">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-8">
-                    <h3 className="text-3xl font-black tracking-tighter uppercase italic flex items-center gap-4">
-                      <History className="text-blue-500" size={24} /> Recent Streams
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-3">
+                      <History size={20} className="text-blue-500" /> RESUME SYNC
                     </h3>
                   </div>
-                  <div className="flex gap-10 overflow-x-auto pb-8 no-scrollbar snap-x">
-                    {watchHistory.slice(0, 10).map(movie => (
-                      <div key={movie.id} className="min-w-[200px] lg:min-w-[240px] snap-center">
-                        <MovieCard movie={movie} onClick={setSelectedMovie} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(movie.id)} />
+                  <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar snap-x">
+                    {watchHistory.map(m => (
+                      <div key={m.id} className="min-w-[150px] lg:min-w-[190px] snap-center">
+                        <MovieCard movie={m} onClick={setSelectedMovie} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(m.id)} />
                       </div>
                     ))}
                   </div>
                 </section>
               )}
 
-              <section className="space-y-16">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-10 border-b border-white/5 pb-14">
-                  <div className="flex items-center gap-10">
-                    <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 text-blue-500 shadow-2xl">
-                       {activeTab === 'trending' ? <Rocket size={48} /> : <Film size={48} />}
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-6xl font-black tracking-tighter uppercase italic leading-none">{activeTab} Results</h3>
-                      <p className="text-[11px] font-black text-gray-500 uppercase tracking-[0.5em]">Neural Database Synchronization Complete</p>
-                    </div>
+              <section className="space-y-10">
+                <div className="flex flex-col sm:flex-row items-center justify-between border-b border-white/5 pb-8 gap-4">
+                  <div className="space-y-1 text-center sm:text-left">
+                    <h2 className="text-4xl lg:text-5xl font-black italic uppercase tracking-tighter leading-none">{activeTab} Discovery</h2>
+                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">Optimized Neural Retrieval System</p>
                   </div>
-                  {activeTab === 'history' && watchHistory.length > 0 && (
-                    <button onClick={clearHistory} className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 font-black text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
-                        <Trash2 size={16} /> Wipe Logs
-                    </button>
-                  )}
                 </div>
 
                 {isLoading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-10 lg:gap-14">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <div key={i} className="aspect-[2/3] bg-white/5 rounded-[2.5rem] animate-pulse" />
-                    ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 lg:gap-10">
+                    {Array.from({ length: 12 }).map((_, i) => <div key={i} className="aspect-[2/3] bg-white/5 rounded-2xl animate-pulse" />)}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-10 lg:gap-14">
-                    {(activeTab === 'watchlist' ? watchlist : activeTab === 'history' ? watchHistory : (searchResult?.movies || [])).map(movie => (
-                      <MovieCard key={movie.id} movie={movie} onClick={setSelectedMovie} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(movie.id)} />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 lg:gap-10">
+                    {(activeTab === 'watchlist' ? watchlist : activeTab === 'history' ? watchHistory : (searchResult?.movies || [])).map(m => (
+                      <MovieCard key={m.id} movie={m} onClick={setSelectedMovie} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(m.id)} />
                     ))}
-                    {(activeTab === 'watchlist' ? watchlist : activeTab === 'history' ? watchHistory : (searchResult?.movies || [])).length === 0 && (
-                      <div className="col-span-full py-60 text-center space-y-6 bg-white/5 rounded-[4rem] border border-dashed border-white/10">
-                        <Info size={64} className="mx-auto text-gray-800" />
-                        <p className="text-3xl font-black text-gray-600 uppercase italic">Index Repository Empty</p>
-                        <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest max-w-sm mx-auto">Query the system or add titles to your personal vault to begin synchronization.</p>
-                      </div>
-                    )}
+                  </div>
+                )}
+                
+                {(!isLoading && (activeTab === 'watchlist' ? watchlist : activeTab === 'history' ? watchHistory : (searchResult?.movies || [])).length === 0) && (
+                  <div className="py-40 text-center space-y-6 bg-white/5 rounded-[3rem] border border-dashed border-white/10">
+                    <Info size={48} className="mx-auto text-gray-700" />
+                    <p className="text-2xl font-black text-gray-600 uppercase italic">Repository Empty</p>
+                    <button onClick={() => handleTabChange('home')} className="px-8 py-3 bg-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Return to Lobby</button>
                   </div>
                 )}
               </section>
@@ -259,37 +295,25 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {selectedMovie && (
-        <DetailModal 
-          movie={selectedMovie} 
-          onClose={() => setSelectedMovie(null)}
-          onWatch={(m) => { setSelectedMovie(null); setStreamingMovie(m); addToHistory(m); }}
-          onWatchlistToggle={toggleWatchlist}
-          isInWatchlist={isInWatchlist(selectedMovie.id)}
-          onSelectMovie={setSelectedMovie}
-        />
-      )}
-
-      {streamingMovie && <VideoPlayer movie={streamingMovie} onClose={() => setStreamingMovie(null)} />}
-
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 h-22 bg-[#080808]/95 backdrop-blur-3xl border-t border-white/5 flex items-center justify-around px-4 z-[49]">
+      {/* Mobile Bottom Nav */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 h-20 bg-[#080808]/95 backdrop-blur-3xl border-t border-white/5 flex items-center justify-around px-2 z-50">
         {navItems.slice(0, 4).map(item => (
-          <button key={item.id} onClick={() => setActiveTab(item.id as Tab)} className={`flex flex-col items-center gap-1.5 ${activeTab === item.id ? 'text-blue-500' : 'text-gray-500'}`}>
+          <button key={item.id} onClick={() => handleTabChange(item.id as Tab)} className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${activeTab === item.id ? 'text-blue-500' : 'text-gray-500'}`}>
             <item.icon size={20} />
             <span className="text-[7px] font-black uppercase tracking-widest">{item.label}</span>
           </button>
         ))}
-        <button onClick={() => setActiveTab('watchlist')} className={`flex flex-col items-center gap-1.5 ${activeTab === 'watchlist' ? 'text-blue-500' : 'text-gray-500'}`}>
+        <button onClick={() => handleTabChange('watchlist')} className={`flex flex-col items-center gap-1.5 flex-1 transition-colors ${activeTab === 'watchlist' ? 'text-blue-500' : 'text-gray-500'}`}>
           <Heart size={20} />
           <span className="text-[7px] font-black uppercase tracking-widest">Vault</span>
         </button>
       </nav>
 
+      {selectedMovie && <DetailModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} onWatch={(m) => { setSelectedMovie(null); setStreamingMovie(m); addToHistory(m); }} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(selectedMovie.id)} onSelectMovie={setSelectedMovie} />}
+      {streamingMovie && <VideoPlayer movie={streamingMovie} onClose={() => setStreamingMovie(null)} />}
+
       {showScrollTop && (
-        <button 
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-32 right-10 lg:bottom-12 z-[100] bg-white text-black p-6 rounded-[2rem] shadow-4xl hover:-translate-y-3 transition-all active:scale-90"
-        >
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="fixed bottom-24 right-6 lg:bottom-12 lg:right-12 z-[60] bg-white text-black p-4 rounded-2xl shadow-3xl transition-all hover:-translate-y-2 active:scale-90">
           <ChevronUp size={28} />
         </button>
       )}

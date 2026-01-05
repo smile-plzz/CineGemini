@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { Movie, OmdbDetails } from '../types';
-import { Star, Clock, Info, Loader2 } from 'lucide-react';
-import { gemini } from '../services/geminiService';
+import React from 'react';
+import { Movie } from '../types';
+import { Star, Clock, Info } from 'lucide-react';
 
 interface MovieCardProps {
   movie: Movie;
@@ -12,121 +11,66 @@ interface MovieCardProps {
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle, isInWatchlist }) => {
-  const [omdbDetails, setOmdbDetails] = useState<OmdbDetails | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchExtraData = async () => {
-      if (!movie.imdbId && !movie.title) return;
-      setLoading(true);
-      try {
-        const data = await gemini.fetchOmdbData(movie.imdbId || null, movie.title);
-        if (data) setOmdbDetails(data);
-      } catch (error) {
-        console.error("OMDb fetch error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExtraData();
-  }, [movie.id]);
-
-  const rating = omdbDetails?.imdbRating || movie.rating || "N/A";
-  const metascore = omdbDetails?.Metascore && omdbDetails.Metascore !== "N/A" ? omdbDetails.Metascore : null;
+  const rating = movie.rating || "N/A";
 
   return (
     <article 
-      className="group relative bg-[#121212] rounded-[2rem] overflow-hidden transition-all duration-700 hover:scale-[1.04] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/5 hover:border-blue-500/40"
-      aria-labelledby={`movie-title-${movie.id}`}
+      className="group relative bg-[#121212] rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.03] border border-white/5 hover:border-blue-500/30 flex flex-col h-full"
     >
       <div 
-        className="aspect-[2/3] w-full overflow-hidden cursor-pointer relative outline-none focus-visible:ring-4 focus-visible:ring-blue-500"
+        className="aspect-[2/3] w-full overflow-hidden cursor-pointer relative"
         onClick={() => onClick(movie)}
-        onKeyDown={(e) => e.key === 'Enter' && onClick(movie)}
-        tabIndex={0}
-        role="button"
-        aria-label={`View details for ${movie.title}`}
       >
         <img 
           src={movie.posterUrl} 
-          alt={`Poster for ${movie.title}`}
-          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+          alt={movie.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           loading="lazy"
         />
         
-        {/* Unified Hover Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
-          <div className="space-y-4 transform translate-y-6 group-hover:translate-y-0 transition-transform duration-700 ease-out">
-             {metascore && (
-               <div className="flex items-center gap-2">
-                 <div className={`px-2 py-1 rounded-md text-[10px] font-black text-black ${parseInt(metascore) >= 60 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]'}`}>
-                   {metascore}
-                 </div>
-                 <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Metascore</span>
-               </div>
-             )}
-             
-             <button 
-                onClick={(e) => { e.stopPropagation(); onClick(movie); }}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-blue-600/30 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
-                aria-label="View Analysis"
-             >
-               <Info size={16} aria-hidden="true" /> Analysis
-             </button>
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+           <button 
+              onClick={(e) => { e.stopPropagation(); onClick(movie); }}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl flex items-center justify-center gap-2 transition-all font-black text-[9px] uppercase tracking-widest shadow-lg"
+           >
+             <Info size={14} /> Analysis
+           </button>
         </div>
 
-        {/* Status Badges */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-          {movie.contentType === 'tv' && (
-            <span className="bg-blue-600/80 backdrop-blur-xl text-white text-[9px] font-black px-3 py-1.5 rounded-xl uppercase tracking-widest border border-white/10 shadow-lg">
-              Series
+        {movie.contentType === 'tv' && (
+          <div className="absolute top-2 right-2">
+            <span className="bg-blue-600/90 backdrop-blur-md text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest border border-white/10">
+              TV
             </span>
-          )}
-          {loading && (
-            <div className="bg-black/60 backdrop-blur-xl p-2 rounded-xl border border-white/10" aria-label="Loading data">
-              <Loader2 size={12} className="animate-spin text-blue-500" />
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="p-5 lg:p-6 space-y-4">
-        <div className="flex justify-between items-start gap-3">
-          <h3 id={`movie-title-${movie.id}`} className="font-black text-lg leading-[1.1] tracking-tight line-clamp-1 group-hover:text-blue-400 transition-colors">
-            {movie.title}
-          </h3>
-          <div className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-yellow-500/20 shrink-0" aria-label={`Rating: ${rating} stars`}>
-            <Star size={12} fill="currentColor" aria-hidden="true" /> {rating}
-          </div>
-        </div>
+      <div className="p-4 flex flex-col flex-1 gap-2">
+        <h3 className="font-black text-sm leading-tight tracking-tight line-clamp-1 group-hover:text-blue-400 transition-colors">
+          {movie.title}
+        </h3>
         
-        <div className="flex items-center justify-between text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">
-          <div className="flex items-center gap-2.5">
-            <time dateTime={movie.year}>{movie.year}</time>
+        <div className="flex items-center justify-between text-[9px] text-gray-500 font-black uppercase tracking-widest">
+          <div className="flex items-center gap-2">
+            <span>{movie.year}</span>
             <div className="w-1 h-1 bg-gray-700 rounded-full" />
-            <span className="flex items-center gap-1.5"><Clock size={14} className="text-blue-500/70" aria-hidden="true" /> {movie.runtime}</span>
+            <span className="flex items-center gap-1"><Clock size={12} className="text-blue-500/50" /> {movie.runtime}</span>
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          {movie.genre?.slice(0, 2).map((g, idx) => (
-            <span key={idx} className="text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl text-gray-400">
-              {g}
-            </span>
-          ))}
+          <div className="flex items-center gap-1 text-yellow-500">
+            <Star size={10} fill="currentColor" /> {rating}
+          </div>
         </div>
 
         <button 
           onClick={(e) => { e.stopPropagation(); onWatchlistToggle(movie); }}
-          aria-pressed={isInWatchlist}
-          className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          className={`mt-auto w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${
             isInWatchlist 
-              ? 'bg-blue-600 text-white border-blue-500 shadow-xl shadow-blue-600/20' 
-              : 'bg-white/5 text-white border-white/10 hover:bg-white/10 hover:border-white/30'
+              ? 'bg-blue-600/10 text-blue-500 border-blue-500/30' 
+              : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
           }`}
         >
-          {isInWatchlist ? 'In Vault' : '+ Add Vault'}
+          {isInWatchlist ? 'In Vault' : '+ Vault'}
         </button>
       </div>
     </article>
