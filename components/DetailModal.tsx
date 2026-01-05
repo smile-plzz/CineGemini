@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Movie, OmdbDetails } from '../types';
-import { X, Play, Calendar, Clock, Star, Plus, Sparkles, Loader2, Award, ChevronRight, Youtube } from 'lucide-react';
+import { X, Play, Calendar, Clock, Star, Plus, Film, Loader2, Award, ChevronRight, Youtube } from 'lucide-react';
 import { gemini } from '../services/geminiService';
 
 interface DetailModalProps {
@@ -133,16 +133,6 @@ const DetailModal: React.FC<DetailModalProps> = ({ movie, onClose, onWatch, onWa
               >
                 <Plus size={32} className={isInWatchlist ? 'rotate-45 transition-transform' : ''} />
               </button>
-              {movie.trailerUrl && (
-                <a 
-                  href={movie.trailerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-8 py-6 bg-red-600/10 border border-red-600/20 rounded-3xl hover:bg-red-600 hover:text-white text-red-500 transition-all flex items-center justify-center font-black active:scale-95"
-                >
-                  <Youtube size={32} />
-                </a>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-16 pt-16 border-t border-white/5">
@@ -160,14 +150,14 @@ const DetailModal: React.FC<DetailModalProps> = ({ movie, onClose, onWatch, onWa
           </div>
         </div>
 
-        {/* Deep Discovery Section */}
+        {/* Similar Discovery Section */}
         <div className="p-10 md:p-24 border-t border-white/5 bg-gradient-to-b from-transparent to-black">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-10 mb-16">
             <div className="space-y-3 text-center sm:text-left">
               <h3 className="text-5xl font-black tracking-tighter uppercase flex items-center justify-center sm:justify-start gap-5 italic">
-                <Sparkles size={40} className="text-blue-500 animate-pulse" /> Deep Discovery
+                <Film size={40} className="text-blue-500" /> More to Explore
               </h3>
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-[0.4em]">Proprietary Gemini Cross-Referencing</p>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-[0.4em]">Curated Genre Match Discovery</p>
             </div>
             {loadingSimilar && <Loader2 className="animate-spin text-blue-500" size={40} />}
           </div>
@@ -201,7 +191,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ movie, onClose, onWatch, onWa
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 font-bold uppercase tracking-[0.4em] text-[10px] italic py-20 text-center w-full">Scanning cinematic patterns for matches...</p>
+              <p className="text-gray-500 font-bold uppercase tracking-[0.4em] text-[10px] italic py-20 text-center w-full">Scanning database for matches...</p>
             )}
           </div>
         </div>

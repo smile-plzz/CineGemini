@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Movie, OmdbDetails } from '../types';
-import { Star, Clock, Info, Award, Target, Loader2 } from 'lucide-react';
+import { Star, Clock, Info, Loader2 } from 'lucide-react';
 import { gemini } from '../services/geminiService';
 
 interface MovieCardProps {
@@ -35,14 +35,21 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
   const metascore = omdbDetails?.Metascore && omdbDetails.Metascore !== "N/A" ? omdbDetails.Metascore : null;
 
   return (
-    <div className="group relative bg-[#121212] rounded-[2rem] overflow-hidden transition-all duration-700 hover:scale-[1.04] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/5 hover:border-blue-500/40">
+    <article 
+      className="group relative bg-[#121212] rounded-[2rem] overflow-hidden transition-all duration-700 hover:scale-[1.04] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/5 hover:border-blue-500/40"
+      aria-labelledby={`movie-title-${movie.id}`}
+    >
       <div 
-        className="aspect-[2/3] w-full overflow-hidden cursor-pointer relative"
+        className="aspect-[2/3] w-full overflow-hidden cursor-pointer relative outline-none focus-visible:ring-4 focus-visible:ring-blue-500"
         onClick={() => onClick(movie)}
+        onKeyDown={(e) => e.key === 'Enter' && onClick(movie)}
+        tabIndex={0}
+        role="button"
+        aria-label={`View details for ${movie.title}`}
       >
         <img 
           src={movie.posterUrl} 
-          alt={movie.title}
+          alt={`Poster for ${movie.title}`}
           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
           loading="lazy"
         />
@@ -61,9 +68,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
              
              <button 
                 onClick={(e) => { e.stopPropagation(); onClick(movie); }}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-blue-600/30 active:scale-95"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl shadow-blue-600/30 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="View Analysis"
              >
-               <Info size={16} /> Analysis
+               <Info size={16} aria-hidden="true" /> Analysis
              </button>
           </div>
         </div>
@@ -76,7 +84,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
             </span>
           )}
           {loading && (
-            <div className="bg-black/60 backdrop-blur-xl p-2 rounded-xl border border-white/10">
+            <div className="bg-black/60 backdrop-blur-xl p-2 rounded-xl border border-white/10" aria-label="Loading data">
               <Loader2 size={12} className="animate-spin text-blue-500" />
             </div>
           )}
@@ -85,19 +93,19 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
 
       <div className="p-5 lg:p-6 space-y-4">
         <div className="flex justify-between items-start gap-3">
-          <h3 className="font-black text-lg leading-[1.1] tracking-tight line-clamp-1 group-hover:text-blue-400 transition-colors">
+          <h3 id={`movie-title-${movie.id}`} className="font-black text-lg leading-[1.1] tracking-tight line-clamp-1 group-hover:text-blue-400 transition-colors">
             {movie.title}
           </h3>
-          <div className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-yellow-500/20 shrink-0">
-            <Star size={12} fill="currentColor" /> {rating}
+          <div className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5 border border-yellow-500/20 shrink-0" aria-label={`Rating: ${rating} stars`}>
+            <Star size={12} fill="currentColor" aria-hidden="true" /> {rating}
           </div>
         </div>
         
         <div className="flex items-center justify-between text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">
           <div className="flex items-center gap-2.5">
-            <span>{movie.year}</span>
+            <time dateTime={movie.year}>{movie.year}</time>
             <div className="w-1 h-1 bg-gray-700 rounded-full" />
-            <span className="flex items-center gap-1.5"><Clock size={14} className="text-blue-500/70" /> {movie.runtime}</span>
+            <span className="flex items-center gap-1.5"><Clock size={14} className="text-blue-500/70" aria-hidden="true" /> {movie.runtime}</span>
           </div>
         </div>
 
@@ -111,7 +119,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
 
         <button 
           onClick={(e) => { e.stopPropagation(); onWatchlistToggle(movie); }}
-          className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border active:scale-95 ${
+          aria-pressed={isInWatchlist}
+          className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
             isInWatchlist 
               ? 'bg-blue-600 text-white border-blue-500 shadow-xl shadow-blue-600/20' 
               : 'bg-white/5 text-white border-white/10 hover:bg-white/10 hover:border-white/30'
@@ -120,7 +129,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
           {isInWatchlist ? 'In Vault' : '+ Add Vault'}
         </button>
       </div>
-    </div>
+    </article>
   );
 };
 

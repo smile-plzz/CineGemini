@@ -1,6 +1,7 @@
+
 {
-  "name": "CineGemini",
-  "description": "An AI-powered cinema discovery platform that leverages Gemini to find, summarize, and recommend movies and TV shows through natural language and real-time search.",
+  "name": "CineVault",
+  "description": "A premium cinema discovery platform powered by OMDb and GNews, featuring a sleek cinematic interface and multi-source streaming.",
   "requestFramePermissions": [
     "geolocation"
   ]

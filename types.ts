@@ -17,6 +17,12 @@ export interface Movie {
   imdbId?: string;
 }
 
+export interface WatchHistory extends Movie {
+  watchedAt: number;
+  lastSeason?: number;
+  lastEpisode?: number;
+}
+
 export interface NewsArticle {
   title: string;
   description: string;
@@ -31,31 +37,35 @@ export interface NewsArticle {
 }
 
 export interface OmdbDetails {
+  Title: string;
+  Year: string;
+  Rated: string;
+  Released: string;
+  Runtime: string;
+  Genre: string;
+  Director: string;
+  Writer: string;
+  Actors: string;
+  Plot: string;
+  Language: string;
+  Country: string;
+  Awards: string;
+  Poster: string;
   Ratings?: Array<{ Source: string; Value: string }>;
   Metascore?: string;
   imdbRating?: string;
   imdbVotes?: string;
-  Awards?: string;
-  BoxOffice?: string;
-  Production?: string;
-  Website?: string;
-  Director?: string;
-  Actors?: string;
+  imdbID: string;
+  Type: string;
+  totalSeasons?: string;
   Response: string;
 }
 
 export interface SearchResult {
   movies: Movie[];
-  aiInsight: string;
   sources: Array<{ title: string; uri: string }>;
 }
 
 export interface WatchlistItem extends Movie {
   addedAt: number;
-}
-
-export interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
-  timestamp: number;
 }
