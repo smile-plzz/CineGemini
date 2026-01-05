@@ -256,4 +256,67 @@ const App: React.FC = () => {
 
                   {/* Grounding Info - Unified */}
                   {searchResult && searchResult.sources.length > 0 && (
-                    <div className="pt
+                    <div className="pt-32 opacity-30 hover:opacity-100 transition-opacity duration-700">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.6em] mb-10 flex items-center gap-4">
+                        <Info size={20} className="text-blue-500" /> Grounding References
+                      </h4>
+                      <div className="flex flex-wrap gap-5">
+                        {searchResult.sources.map((source, i) => (
+                          <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black uppercase tracking-widest bg-white/5 border border-white/10 px-8 py-4 rounded-2xl hover:bg-blue-600/20 hover:border-blue-500/30 transition-all active:scale-95 shadow-lg">
+                            {source.title.slice(0, 45)}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Global Overlays */}
+      {selectedMovie && (
+        <DetailModal 
+          movie={selectedMovie} 
+          onClose={() => setSelectedMovie(null)}
+          onWatch={(m) => { setSelectedMovie(null); setStreamingMovie(m); }}
+          onWatchlistToggle={toggleWatchlist}
+          isInWatchlist={isInWatchlist(selectedMovie.id)}
+          onSelectMovie={setSelectedMovie}
+        />
+      )}
+
+      {streamingMovie && <VideoPlayer movie={streamingMovie} onClose={() => setStreamingMovie(null)} />}
+
+      {isSearching && (
+        <div className="fixed inset-0 z-[200] bg-[#050505]/98 backdrop-blur-4xl flex flex-col items-center justify-center p-16 text-center animate-in fade-in zoom-in duration-500">
+          <div className="relative mb-24">
+            <div className="w-80 h-80 border-[12px] border-blue-600/10 border-t-blue-600 rounded-full animate-spin shadow-[0_0_80px_rgba(37,99,235,0.2)]" />
+            <div className="absolute inset-0 m-auto w-40 h-40 bg-blue-600 rounded-full blur-[120px] opacity-40 animate-pulse" />
+            <Sparkles className="absolute inset-0 m-auto text-blue-500 animate-bounce" size={80} />
+          </div>
+          <div className="space-y-8">
+            <h2 className="text-7xl lg:text-9xl font-black tracking-tighter uppercase italic leading-none">Neural<br/><span className="text-blue-500">Syncing</span></h2>
+            <p className="text-gray-500 font-bold uppercase tracking-[0.8em] text-xs animate-pulse">Accessing Global Cinematic Database</p>
+          </div>
+        </div>
+      )}
+
+      {showScrollTop && (
+        <button 
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-12 right-12 z-[100] bg-white text-black p-6 rounded-[2rem] shadow-4xl hover:-translate-y-3 transition-all active:scale-90 group border-none"
+          aria-label="Back to Top"
+        >
+          <ChevronUp size={32} className="group-hover:animate-bounce" />
+        </button>
+      )}
+
+      <ChatWidget />
+    </div>
+  );
+};
+
+export default App;
