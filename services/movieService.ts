@@ -2,8 +2,8 @@
 import { Movie, SearchResult, OmdbDetails, NewsArticle } from "../types";
 
 // Primary and Fallback Keys to ensure availability
-const OMDB_KEYS = ["c5bb2c78", "1a9ba45f"];
-const GNEWS_API_KEY = "6901869e96f642469d7a26f787127a6f";
+const OMDB_KEYS = ["c5bb2c78"];
+const GNEWS_API_KEY = "70f8f36aed5c9ccfb722c933455bc237";
 
 const PLACEHOLDER_POSTER = "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=2070&auto=format&fit=crop";
 
