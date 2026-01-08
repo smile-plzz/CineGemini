@@ -16,27 +16,10 @@ interface StreamingServer {
 }
 
 const SERVERS: StreamingServer[] = [
-
   { id: 'vidlink', name: "VidLink Core", movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}`, reliability: 'High' },
   { id: 'vidsrc-to', name: "VidSrc Prime", movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`, reliability: 'High' },
   { id: 'vidsrc-me', name: "VidSrc Legacy", movie: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`, tv: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&sea=${s}&epi=${e}`, reliability: 'High' },
-  { id: 'embed-su', name: "Embed.su", movie: (id) => `https://embed.su/embed/movie/${id}`, tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}`, reliability: 'High' },
-  
-  // --- Medium Reliability (Solid Backups) ---
-  { id: 'vidsrc-icu', name: "Icu Stream", movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'vidsrc-cc', name: "VidSrc CC", movie: (id) => `https://vidsrc.cc/v2/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'vidsrc-xyz', name: "VidSrc XYZ", movie: (id) => `https://vidsrc.xyz/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'vidsrc-vip', name: "VidSrc VIP", movie: (id) => `https://vidsrc.vip/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.vip/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'vixsrc', name: "VixSrc", movie: (id) => `https://vixsrc.cc/embed/movie/${id}`, tv: (id, s, e) => `https://vixsrc.cc/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'smashy', name: "Smashy Stream", movie: (id) => `https://embed.smashy.stream/play/movie/${id}`, tv: (id, s, e) => `https://embed.smashy.stream/play/tv/${id}?s=${s}&e=${e}`, reliability: 'Medium' },
-  { id: 'autoembed', name: "AutoEmbed", movie: (id) => `https://player.autoembed.cc/embed/movie/${id}`, tv: (id, s, e) => `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-  { id: 'vidzee', name: "VidZee", movie: (id) => `https://vidzee.tv/embed/movie/${id}`, tv: (id, s, e) => `https://vidzee.tv/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' },
-
-  // --- Specialized / Low Reliability (Fail-safes) ---
-  { id: 'multiembed', name: "MultiEmbed", movie: (id) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`, tv: (id, s, e) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`, reliability: 'Medium' },
-  { id: '2embed', name: "2Embed", movie: (id) => `https://www.2embed.cc/embed/${id}`, tv: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`, reliability: 'Low' },
-  { id: 'superembed', name: "SuperEmbed", movie: (id) => `https://superembed.stream/embed/movie/${id}`, tv: (id, s, e) => `https://superembed.stream/embed/tv/${id}/${s}/${e}`, reliability: 'Low' }
-  
+  { id: 'vidsrc-icu', name: "Icu Stream", movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' }
 ];
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
