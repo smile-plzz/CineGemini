@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Movie, OmdbDetails } from '../types';
 import { X, Play, Calendar, Clock, Star, Plus, Film, Loader2, Award, ChevronRight } from 'lucide-react';
