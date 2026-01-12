@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Server, ChevronDown, SkipForward, AlertTriangle, ToggleLeft, ToggleRight, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  X, Server, ChevronDown, SkipForward, SkipBack, 
+  Maximize, Minimize, List, Settings, 
+  Tv, Film, AlertCircle 
+} from 'lucide-react';
 import { Movie } from '../types';
+
+// --- Types ---
 
 interface VideoPlayerProps {
   movie: Movie;
@@ -10,129 +16,324 @@ interface VideoPlayerProps {
 interface StreamingServer {
   id: string;
   name: string;
+  type: 'ad-free' | 'backup' | 'premium';
   movie: (id: string) => string;
   tv: (id: string, s: number, e: number) => string;
-  reliability: 'High' | 'Medium' | 'Variable';
 }
 
+// --- Configuration ---
+
 const SERVERS: StreamingServer[] = [
-  { id: 'vidlink', name: "VidLink Core", movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}`, reliability: 'High' },
-  { id: 'vidsrc-to', name: "VidSrc Prime", movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`, reliability: 'High' },
-  { id: 'vidsrc-me', name: "VidSrc Legacy", movie: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`, tv: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&sea=${s}&epi=${e}`, reliability: 'High' },
-  { id: 'vidsrc-icu', name: "Icu Stream", movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`, reliability: 'Medium' }
+  { id: 'vidlink', name: "VidLink Pro", type: 'premium', movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
+  { id: 'vidsrc-to', name: "VidSrc Main", type: 'ad-free', movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+  { id: 'vidsrc-icu', name: "ICU Stream", type: 'backup', movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` },
+  { id: 'pro-api', name: "Pro API", type: 'backup', movie: (id) => `https://embed.su/embed/movie/${id}`, tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
 ];
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tmdbId = movie.tmdbId || movie.id;
+  const isTV = movie.contentType === 'tv' || !!movie.first_air_date; // Robust check
+  const storageKey = `watch_history_${tmdbId}`;
+
+  // --- State ---
   const [activeServer, setActiveServer] = useState<StreamingServer>(SERVERS[0]);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
-  const [showServerMenu, setShowServerMenu] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(true);
   const [isHovered, setIsHovered] = useState(true);
-  
-  const tmdbId = movie.tmdbId || movie.id;
-  const isTV = movie.contentType === 'tv';
-  const embedUrl = isTV ? activeServer.tv(tmdbId, season, episode) : activeServer.movie(tmdbId);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showServerMenu, setShowServerMenu] = useState(false);
+  const [showEpisodeNav, setShowEpisodeNav] = useState(false);
 
+  // --- 1. Resume Functionality (Load) ---
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    let timeout: number;
-    if (isHovered) {
-      timeout = window.setTimeout(() => setIsHovered(false), 3500);
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Only restore if it makes sense
+        if (parsed.season) setSeason(parsed.season);
+        if (parsed.episode) setEpisode(parsed.episode);
+        if (parsed.serverId) {
+          const savedServer = SERVERS.find(s => s.id === parsed.serverId);
+          if (savedServer) setActiveServer(savedServer);
+        }
+      } catch (e) {
+        console.error("Failed to load watch history", e);
+      }
     }
-    return () => clearTimeout(timeout);
-  }, [isHovered]);
+  }, [storageKey]);
+
+  // --- 2. Resume Functionality (Save) ---
+  useEffect(() => {
+    const data = {
+      season,
+      episode,
+      serverId: activeServer.id,
+      lastWatched: new Date().toISOString(),
+      title: movie.title // Useful for a "Continue Watching" list elsewhere
+    };
+    localStorage.setItem(storageKey, JSON.stringify(data));
+  }, [season, episode, activeServer, storageKey, movie.title]);
+
+  // --- Helpers ---
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!document.fullscreenElement) {
+      await containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  const handleEpisodeChange = (newSeason: number, newEpisode: number) => {
+    setSeason(newSeason);
+    setEpisode(newEpisode);
+    setShowEpisodeNav(false); // Close menu on selection
+  };
+
+  // --- Keyboard Shortcuts & Activity Monitor ---
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showEpisodeNav || showServerMenu) {
+            setShowEpisodeNav(false);
+            setShowServerMenu(false);
+        } else {
+            onClose();
+        }
+      }
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+    };
+    
+    // Auto-hide UI logic
+    let timeout: NodeJS.Timeout;
+    const resetTimer = () => {
+      setIsHovered(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        // Don't hide if menus are open
+        if (!showServerMenu && !showEpisodeNav) setIsHovered(false);
+      }, 4000);
+    };
+
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('click', resetTimer);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      clearTimeout(timeout);
+    };
+  }, [onClose, toggleFullscreen, showEpisodeNav, showServerMenu]);
+
+
+  // --- Embed URL Generation ---
+  const embedUrl = isTV 
+    ? activeServer.tv(tmdbId.toString(), season, episode) 
+    : activeServer.movie(tmdbId.toString());
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-500 overflow-hidden">
-      <div 
-        className="relative w-full h-full flex flex-col cursor-none"
-        onMouseMove={() => setIsHovered(true)}
-        style={{ cursor: isHovered ? 'default' : 'none' }}
-      >
-        <iframe
-          key={embedUrl}
-          src={embedUrl}
-          className="w-full h-full border-none"
-          allow="autoplay; fullscreen; encrypted-media"
-          allowFullScreen
-        />
+    <div 
+      ref={containerRef}
+      className="fixed inset-0 z-[100] bg-black text-white overflow-hidden animate-in fade-in duration-300 font-sans"
+    >
+      {/* Background Iframe */}
+      <iframe
+        key={embedUrl} // Forces reload on source change
+        src={embedUrl}
+        className="w-full h-full border-none focus:outline-none"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allowFullScreen
+        title="Video Player"
+      />
 
-        {/* Cinematic HUD */}
-        <div className={`absolute inset-0 pointer-events-none transition-all duration-1000 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="absolute top-0 inset-x-0 p-8 lg:p-12 bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-auto flex justify-between items-start">
-            <div className="space-y-4">
-              <h2 className="text-4xl lg:text-5xl font-black text-white drop-shadow-2xl flex items-center gap-6 tracking-tighter italic uppercase">
+      {/* --- Overlay UI --- */}
+      <div 
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ease-in-out flex flex-col justify-between
+          ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+      >
+        
+        {/* Top Gradient & Header */}
+        <div className="bg-gradient-to-b from-black/90 via-black/50 to-transparent p-6 pointer-events-auto">
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg flex items-center gap-3">
                 {movie.title}
-                {isTV && <span className="bg-blue-600 text-[10px] px-4 py-2 rounded-xl">S{season} E{episode}</span>}
+                {isTV && (
+                    <span className="text-sm font-bold bg-white/20 px-2 py-0.5 rounded text-white/90">
+                        S{season}:E{episode}
+                    </span>
+                )}
               </h2>
-              <div className="flex gap-4">
-                <span className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/10 text-blue-400">Node: {activeServer.name}</span>
-                <span className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/10 text-green-400">Status: Active</span>
+              <div className="flex items-center gap-2 text-xs font-medium text-white/60 uppercase tracking-widest">
+                <span className={`w-2 h-2 rounded-full ${activeServer.type === 'premium' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+                Stream: {activeServer.name}
               </div>
             </div>
-            <button onClick={onClose} className="p-6 bg-white/5 hover:bg-red-500 text-white rounded-full transition-all border border-white/10 shadow-2xl active:scale-90"><X size={32} /></button>
-          </div>
 
-          <div className="absolute bottom-0 inset-x-0 p-8 lg:p-12 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-auto">
-            <div className="flex flex-wrap items-center justify-between gap-8">
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowServerMenu(!showServerMenu)} 
-                    className="flex items-center gap-4 bg-white/10 hover:bg-white/20 text-white px-10 py-5 rounded-3xl border border-white/10 transition-all font-black text-[11px] uppercase tracking-[0.2em]"
-                  >
-                    <Server size={20} /> Switch Node <ChevronDown size={18} className={showServerMenu ? 'rotate-180' : ''} />
-                  </button>
-                  {showServerMenu && (
-                    <div className="absolute bottom-full left-0 mb-6 w-72 bg-[#0a0a0a]/98 backdrop-blur-3xl border border-white/10 rounded-[2rem] overflow-hidden p-3 shadow-4xl animate-in slide-in-from-bottom-4">
-                      {SERVERS.map(s => (
-                        <button 
-                          key={s.id} 
-                          onClick={() => { setActiveServer(s); setShowServerMenu(false); }} 
-                          className={`w-full flex items-center justify-between px-5 py-4 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all mb-1 ${activeServer.id === s.id ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/5'}`}
-                        >
-                          {s.name}
-                          <span className="text-[8px] opacity-60">{s.reliability}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {isTV && (
-                  <div className="flex items-center gap-4 bg-white/5 px-6 py-5 rounded-3xl border border-white/10">
-                    <input 
-                      type="number" 
-                      value={season} 
-                      onChange={(e) => setSeason(Math.max(1, parseInt(e.target.value) || 1))} 
-                      className="w-8 bg-transparent text-white font-black text-center focus:outline-none"
-                    />
-                    <span className="text-[9px] font-black opacity-30 uppercase tracking-widest">S / E</span>
-                    <input 
-                      type="number" 
-                      value={episode} 
-                      onChange={(e) => setEpisode(Math.max(1, parseInt(e.target.value) || 1))} 
-                      className="w-8 bg-transparent text-white font-black text-center focus:outline-none"
-                    />
+            <div className="flex items-center gap-3">
+               {/* Server Switcher */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowServerMenu(!showServerMenu)}
+                  className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full transition-all active:scale-95"
+                  aria-label="Change Server"
+                >
+                    <Settings size={20} />
+                </button>
+                
+                {showServerMenu && (
+                  <div className="absolute top-14 right-0 w-64 bg-[#111]/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 animate-in slide-in-from-top-2">
+                    <div className="p-3 border-b border-white/5 text-xs font-bold text-white/40 uppercase tracking-wider">Select Source</div>
+                    {SERVERS.map(s => (
+                      <button 
+                        key={s.id} 
+                        onClick={() => { setActiveServer(s); setShowServerMenu(false); }}
+                        className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center justify-between
+                          ${activeServer.id === s.id ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-white/10'}`}
+                      >
+                        {s.name}
+                        {s.type === 'premium' && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">HQ</span>}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-6">
+              <button 
+                onClick={onClose} 
+                className="p-3 bg-red-600/80 hover:bg-red-600 text-white rounded-full transition-all active:scale-95 shadow-lg"
+                aria-label="Close Player"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center - Episode Navigator (Only visible if toggled) */}
+        {showEpisodeNav && isTV && (
+             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center pointer-events-auto animate-in fade-in zoom-in-95 duration-200">
+                <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+                    <div className="flex items-center justify-between p-6 border-b border-white/5">
+                        <h3 className="text-xl font-bold flex items-center gap-2"><List size={20} /> Season Selector</h3>
+                        <button onClick={() => setShowEpisodeNav(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20}/></button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {/* Ideally, you would map real data here. 
+                           Since we don't have metadata, we provide a smart manual selector 
+                        */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-widest">Select Season</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[...Array(10)].map((_, i) => (
+                                        <button 
+                                            key={i} 
+                                            onClick={() => setSeason(i+1)}
+                                            className={`py-2 rounded-lg text-sm font-bold transition-all ${season === i+1 ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400'}`}
+                                        >
+                                            {i+1}
+                                        </button>
+                                    ))}
+                                    {/* Manual Input for higher seasons */}
+                                    <input 
+                                        type="number" 
+                                        value={season} 
+                                        onChange={(e) => setSeason(parseInt(e.target.value) || 1)}
+                                        className="col-span-2 bg-white/5 border border-white/10 rounded-lg text-center text-sm font-bold focus:outline-none focus:border-blue-500"
+                                        placeholder="#"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-widest">Select Episode</label>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {[...Array(20)].map((_, i) => (
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleEpisodeChange(season, i+1)}
+                                            className={`py-2 rounded-lg text-sm font-bold transition-all ${episode === i+1 ? 'bg-white text-black' : 'bg-white/5 hover:bg-white/10 text-gray-400'}`}
+                                        >
+                                            {i+1}
+                                        </button>
+                                    ))}
+                                     <input 
+                                        type="number" 
+                                        value={episode} 
+                                        onChange={(e) => setEpisode(parseInt(e.target.value) || 1)}
+                                        className="col-span-2 bg-white/5 border border-white/10 rounded-lg text-center text-sm font-bold focus:outline-none focus:border-blue-500"
+                                        placeholder="#"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="p-4 bg-white/5 text-xs text-white/40 text-center">
+                        Selecting a new episode will automatically reload the stream.
+                    </div>
+                </div>
+             </div>
+        )}
+
+        {/* Bottom Controls */}
+        <div className="bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6 lg:p-10 pointer-events-auto">
+          <div className="flex flex-col gap-4">
+            
+            {/* Control Bar */}
+            <div className="flex items-center justify-between">
+              
+              <div className="flex items-center gap-4">
                 {isTV && (
-                  <button onClick={() => setEpisode(e => e + 1)} className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-5 rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center gap-4 active:scale-95">
-                    <SkipForward size={24} /> Next Episode
-                  </button>
+                    <>
+                        <button 
+                            onClick={() => setEpisode(Math.max(1, episode - 1))}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md transition-all text-sm font-bold disabled:opacity-50"
+                            disabled={episode <= 1}
+                        >
+                            <SkipBack size={16} fill="currentColor" /> Prev
+                        </button>
+                        
+                        <button 
+                            onClick={() => setShowEpisodeNav(true)}
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-lg shadow-blue-900/40 transition-all font-bold text-sm"
+                        >
+                            <Tv size={16} /> S{season}:E{episode}
+                        </button>
+
+                        <button 
+                            onClick={() => setEpisode(episode + 1)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-md transition-all text-sm font-bold"
+                        >
+                            Next <SkipForward size={16} fill="currentColor" />
+                        </button>
+                    </>
                 )}
-                <button onClick={() => window.location.reload()} className="p-5 bg-white/10 rounded-full border border-white/10 hover:bg-white/20 transition-all text-white active:rotate-180">
-                  <RotateCcw size={20} />
-                </button>
+                {!isTV && (
+                     <div className="px-4 py-2 bg-white/10 rounded-full text-sm font-medium flex items-center gap-2">
+                        <Film size={16} /> Movie Mode
+                     </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                 {/* Fullscreen Toggle */}
+                 <button 
+                    onClick={toggleFullscreen}
+                    className="p-3 hover:bg-white/10 rounded-full transition-all text-white/90 hover:text-white"
+                    title="Toggle Fullscreen (F)"
+                 >
+                    {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                 </button>
               </div>
             </div>
           </div>
