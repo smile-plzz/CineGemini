@@ -24,11 +24,123 @@ interface StreamingServer {
 // --- Configuration ---
 
 const SERVERS: StreamingServer[] = [
-  { id: 'vidlink', name: "VidLink Pro", type: 'premium', movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
-  { id: 'vidsrc-to', name: "VidSrc Main", type: 'ad-free', movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-  { id: 'vidsrc-icu', name: "ICU Stream", type: 'backup', movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` },
-  { id: 'pro-api', name: "Pro API", type: 'backup', movie: (id) => `https://embed.su/embed/movie/${id}`, tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+  // Original and prior additions (still active per 2026 sources)
+  { 
+    id: 'vidlink', 
+    name: "VidLink Pro", 
+    type: 'premium/fast', 
+    movie: (id) => `https://vidlink.pro/movie/${id}`, 
+    tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'vidsrc-to', 
+    name: "VidSrc To", 
+    type: 'ad-free/main', 
+    movie: (id) => `https://vidsrc.to/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'vidsrc-icu', 
+    name: "VidSrc ICU", 
+    type: 'backup', 
+    movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'embed-su', 
+    name: "Embed.su / Pro API", 
+    type: 'backup', 
+    movie: (id) => `https://embed.su/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'vidsrc-cc', 
+    name: "VidSrc CC", 
+    type: 'main/alternative', 
+    movie: (id) => `https://vidsrc.cc/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://vidsrc.cc/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'vidsrc-pro', 
+    name: "VidSrc Pro", 
+    type: 'premium/high-quality', 
+    movie: (id) => `https://vidsrc.pro/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'autoembed', 
+    name: "AutoEmbed", 
+    type: 'backup/multi-server', 
+    movie: (id) => `https://autoembed.cc/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://autoembed.cc/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: '2embed', 
+    name: "2Embed", 
+    type: 'classic/backup', 
+    movie: (id) => `https://www.2embed.cc/embed/${id}`, 
+    tv: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` 
+  },
+  { 
+    id: 'superembed', 
+    name: "SuperEmbed", 
+    type: 'multi-server', 
+    movie: (id) => `https://www.superembed.stream/embed/${id}`, 
+    tv: (id, s, e) => `https://www.superembed.stream/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'multiembed', 
+    name: "MultiEmbed", 
+    type: 'backup', 
+    movie: (id) => `https://multiembed.mov/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://multiembed.mov/embed/tv/${id}/${s}/${e}` 
+  },
+
+  // New additions from 2025–2026 sources (e.g., developer docs and forums)
+  { 
+    id: 'vidsrc-me', 
+    name: "VidSrc ME", 
+    type: 'main/alternative', 
+    movie: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`, 
+    tv: (id, s, e) => `https://vidsrc.me/embed/tv?tmdb=${id}&season=${s}&episode=${e}` 
+  },
+  { 
+    id: 'vidsrc-dev', 
+    name: "VidSrc Dev", 
+    type: 'dev/backup', 
+    movie: (id) => `https://vidsrc.dev/embed/movie/${id}`, 
+    tv: (id, s, e) => `https://vidsrc.dev/embed/tv/${id}/${s}/${e}` 
+  },
+  { 
+    id: 'vidsrc-xyz', 
+    name: "VidSrc XYZ", 
+    type: 'alternative', 
+    movie: (id) => `https://vidsrc.xyz/embed/movie?tmdb=${id}`, 
+    tv: (id, s, e) => `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}` 
+  },
+  { 
+    id: 'moviesapi-club', 
+    name: "MoviesAPI Club", 
+    type: 'backup/multi-host', 
+    movie: (id) => `https://moviesapi.club/movie/${id}`, 
+    tv: (id, s, e) => `https://moviesapi.club/tv/${id}-${s}-${e}` 
+  },
+  { 
+    id: 'smashy', 
+    name: "Smashy Stream", 
+    type: 'multi-server', 
+    movie: (id) => `https://player.smashy.stream/movie/${id}`, 
+    tv: (id, s, e) => `https://player.smashy.stream/tv/${id}?season=${s}&episode=${e}` 
+  },
 ];
+
+
+
+
+
+
+
+
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
