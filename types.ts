@@ -21,6 +21,7 @@ export interface WatchHistory extends Movie {
   watchedAt: number;
   lastSeason?: number;
   lastEpisode?: number;
+  lastServerId?: string;
 }
 
 export interface NewsArticle {
