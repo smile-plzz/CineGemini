@@ -23,12 +23,206 @@ interface StreamingServer {
 
 // --- Configuration ---
 
+//const SERVERS: StreamingServer[] = [
+//  { id: 'vidlink', name: "VidLink Pro", type: 'premium', movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
+//  { id: 'vidsrc-to', name: "VidSrc Main", type: 'ad-free', movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+//  { id: 'vidsrc-icu', name: "ICU Stream", type: 'backup', movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` },
+//  { id: 'pro-api', name: "Pro API", type: 'backup', movie: (id) => `https://embed.su/embed/movie/${id}`, tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+// ];
+
 const SERVERS: StreamingServer[] = [
-  { id: 'vidlink', name: "VidLink Pro", type: 'premium', movie: (id) => `https://vidlink.pro/movie/${id}`, tv: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
-  { id: 'vidsrc-to', name: "VidSrc Main", type: 'ad-free', movie: (id) => `https://vidsrc.to/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-  { id: 'vidsrc-icu', name: "ICU Stream", type: 'backup', movie: (id) => `https://vidsrc.icu/embed/movie/${id}`, tv: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` },
-  { id: 'pro-api', name: "Pro API", type: 'backup', movie: (id) => `https://embed.su/embed/movie/${id}`, tv: (id, s, e) => `https://embed.su/embed/tv/${id}/${s}/${e}` },
+  // Primary Premium Sources
+  {
+    id: 'vidlink',
+    name: "VidLink Pro",
+    type: 'premium',
+    movie: (id: string) => `https://vidlink.pro/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidlink.pro/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'vidsrc-to',
+    name: "VidSrc Main",
+    type: 'ad-free',
+    movie: (id: string) => `https://vidsrc.to/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`
+  },
+
+  // Alternative VidSrc Domains
+  {
+    id: 'vidsrc-icu',
+    name: "VidSrc ICU",
+    type: 'backup',
+    movie: (id: string) => `https://vidsrc.icu/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'vidsrc-me',
+    name: "VidSrc.me",
+    type: 'alternative',
+    movie: (id: string) => `https://vidsrc.me/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.me/embed/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'vidsrc-xyz',
+    name: "VidSrc XYZ",
+    type: 'alternative',
+    movie: (id: string) => `https://vidsrc.xyz/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.xyz/embed/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'vidsrc-cc',
+    name: "VidSrc CC",
+    type: 'backup',
+    movie: (id: string) => `https://vidsrc.cc/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.cc/embed/tv/${id}/${s}/${e}`
+  },
+
+  // MultiEmbed Sources
+  {
+    id: 'multiembed',
+    name: "MultiEmbed",
+    type: 'multi-source',
+    movie: (id: string) => `https://multiembed.mov/direct/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://multiembed.mov/direct/tv/${id}/${s}/${e}`
+  },
+  {
+    id: '2embed',
+    name: "2Embed",
+    type: 'alternative',
+    movie: (id: string) => `https://www.2embed.cc/embed/${id}`,
+    tv: (id: string, s: number, e: number) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+  },
+
+  // SmashyStream Network
+  {
+    id: 'smashystream',
+    name: "SmashyStream",
+    type: 'alternative',
+    movie: (id: string) => `https://embed.smashystream.com/playere.php?tmdb=${id}`,
+    tv: (id: string, s: number, e: number) => `https://embed.smashystream.com/playere.php?tmdb=${id}&season=${s}&episode=${e}`
+  },
+
+  // Movie-Web.app Sources
+  {
+    id: 'movie-web',
+    name: "MovieWeb",
+    type: 'modern',
+    movie: (id: string) => `https://movie-web.app/media/tmdb-movie-${id}`,
+    tv: (id: string, s: number, e: number) => `https://movie-web.app/media/tmdb-show-${id}/tvdb-${s}-${e}`
+  },
+
+  // API-Based Sources
+  {
+    id: 'moviesapi',
+    name: "MoviesAPI",
+    type: 'api',
+    movie: (id: string) => `https://moviesapi.club/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://moviesapi.club/tv/${id}-${s}-${e}`
+  },
+  {
+    id: 'pro-api',
+    name: "Pro API",
+    type: 'api',
+    movie: (id: string) => `https://embed.su/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://embed.su/embed/tv/${id}/${s}/${e}`
+  },
+
+  // Additional Active Sources
+  {
+    id: 'flixhq',
+    name: "FlixHQ",
+    type: 'popular',
+    movie: (id: string) => `https://flixhq.to/ajax/movie/episodes/${id}`,
+    tv: (id: string, s: number, e: number) => `https://flixhq.to/ajax/v2/episode/servers/${id}?season=${s}&episode=${e}`
+  },
+  {
+    id: 'watchseries',
+    name: "WatchSeries",
+    type: 'series-focused',
+    movie: (id: string) => `https://watchseries.ac/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://watchseries.ac/tv/${id}-${s}-${e}`
+  },
+  {
+    id: 'streamembed',
+    name: "StreamEmbed",
+    type: 'backup',
+    movie: (id: string) => `https://streamembed.net/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://streamembed.net/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'superembed',
+    name: "SuperEmbed",
+    type: 'multi-source',
+    movie: (id: string) => `https://superembed.stream/e/${id}`,
+    tv: (id: string, s: number, e: number) => `https://superembed.stream/e/${id}-${s}-${e}`
+  },
+  {
+    id: 'vidsrcpro',
+    name: "VidSrc Pro",
+    type: 'premium',
+    movie: (id: string) => `https://vidsrc.pro/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.pro/embed/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'moviehd',
+    name: "MovieHD",
+    type: 'backup',
+    movie: (id: string) => `https://moviehd.watch/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://moviehd.watch/embed/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'streamm4u',
+    name: "StreamM4U",
+    type: 'alternative',
+    movie: (id: string) => `https://streamm4u.com/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://streamm4u.com/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'flixwise',
+    name: "FlixWise",
+    type: 'backup',
+    movie: (id: string) => `https://flixwise.com/embed/${id}`,
+    tv: (id: string, s: number, e: number) => `https://flixwise.com/embed/${id}/${s}/${e}`
+  },
+  {
+    id: 'cinegrab',
+    name: "CineGrab",
+    type: 'torrent-based',
+    movie: (id: string) => `https://cinegrab.com/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://cinegrab.com/tv/${id}/${s}/${e}`
+  },
+  {
+    id: 'vidsrclive',
+    name: "VidSrc Live",
+    type: 'live-sports',
+    movie: (id: string) => `https://vidsrc.live/embed/movie/${id}`,
+    tv: (id: string, s: number, e: number) => `https://vidsrc.live/embed/tv/${id}/${s}/${e}`
+  },
+
+  // Domain Variants (Auto-select based on region)
+  {
+    id: 'vidsrc-autoselect',
+    name: "VidSrc Auto",
+    type: 'smart',
+    movie: (id: string) => {
+      const domains = ['vidsrc.to', 'vidsrc.xyz', 'vidsrc.cc', 'vidsrc.me'];
+      const domain = domains[Math.floor(Math.random() * domains.length)];
+      return `https://${domain}/embed/movie/${id}`;
+    },
+    tv: (id: string, s: number, e: number) => {
+      const domains = ['vidsrc.to', 'vidsrc.xyz', 'vidsrc.cc', 'vidsrc.me'];
+      const domain = domains[Math.floor(Math.random() * domains.length)];
+      return `https://${domain}/embed/tv/${id}/${s}/${e}`;
+    }
+  }
 ];
+
+
+
+
+
+
+
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
