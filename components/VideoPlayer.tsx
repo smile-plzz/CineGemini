@@ -11,6 +11,7 @@ import { Movie } from '../types';
 interface VideoPlayerProps {
   movie: Movie;
   onClose: () => void;
+  onProgress?: (movie: Movie, progress: { season?: number; episode?: number; serverId?: string }) => void;
 }
 
 interface StreamingServer {
@@ -228,7 +229,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tmdbId = movie.tmdbId || movie.id;
   const isTV = movie.contentType === 'tv' || !!movie.first_air_date; // Robust check
-  const storageKey = `watch_history_${tmdbId}`;
+  const storageKey = `cinevault-progress_${tmdbId}`;
+  const preferredServerKey = "cinevault-preferred-server";
 
   // --- State ---
   const [activeServer, setActiveServer] = useState<StreamingServer>(SERVERS[0]);
@@ -241,7 +243,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
 
   // --- 1. Resume Functionality (Load) ---
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
+    const saved = sessionStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -255,6 +257,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       } catch (e) {
         console.error("Failed to load watch history", e);
       }
+    } else {
+      const preferred = sessionStorage.getItem(preferredServerKey);
+      if (preferred) {
+        const savedServer = SERVERS.find(s => s.id === preferred);
+        if (savedServer) setActiveServer(savedServer);
+      }
     }
   }, [storageKey]);
 
@@ -267,8 +275,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
       lastWatched: new Date().toISOString(),
       title: movie.title // Useful for a "Continue Watching" list elsewhere
     };
-    localStorage.setItem(storageKey, JSON.stringify(data));
-  }, [season, episode, activeServer, storageKey, movie.title]);
+    sessionStorage.setItem(storageKey, JSON.stringify(data));
+    sessionStorage.setItem(preferredServerKey, activeServer.id);
+    onProgress?.(movie, { season, episode, serverId: activeServer.id });
+  }, [season, episode, activeServer, storageKey, movie.title, movie, onProgress]);
 
   // --- Helpers ---
 

@@ -1,6 +1,7 @@
 
 import { Movie, SearchResult, OmdbDetails, NewsArticle } from "../types";
 import { GoogleGenAI, Type } from "@google/genai";
+import { getSessionCache, setSessionCache } from "./sessionCache";
 
 // Primary Node (User Provided)
 const OMDB_NODES = ["c5bb2c78", "1a9ba45f", "971169c8", "60327f31"];
@@ -34,6 +35,8 @@ export class MovieService {
   private cache: Map<string, any> = new Map();
   private currentNodeIndex = 0;
   private ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  private readonly searchTtlMs = 1000 * 60 * 15;
+  private readonly nowPlayingTtlMs = 1000 * 60 * 30;
 
   private get apiKey() {
     return OMDB_NODES[this.currentNodeIndex];
@@ -106,12 +109,15 @@ export class MovieService {
 
   async fetchNowPlaying(): Promise<Movie[]> {
     const cacheKey = "now-playing-v5";
+    const sessionCached = getSessionCache<Movie[]>(cacheKey);
+    if (sessionCached) return sessionCached;
     if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
     
     try {
       const res = await this.searchEntertainment("2024 blockbusters", { type: 'movie' });
       const movies = res.movies.slice(0, 8);
       this.cache.set(cacheKey, movies);
+      setSessionCache(cacheKey, movies, this.nowPlayingTtlMs);
       return movies;
     } catch {
       return [];
@@ -126,6 +132,8 @@ export class MovieService {
     const sanitizedQuery = (query || '').trim() || '2024';
     const cacheKey = JSON.stringify({ sanitizedQuery, filters, node: this.currentNodeIndex, v: 'v11-ai-shield' });
     
+    const sessionCached = getSessionCache<SearchResult>(cacheKey);
+    if (sessionCached) return sessionCached;
     if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
     try {
@@ -184,6 +192,7 @@ export class MovieService {
 
       const result = { movies, sources: [{ title: `OMDb Node ${this.currentNodeIndex}`, uri: "https://www.omdbapi.com/" }] };
       this.cache.set(cacheKey, result);
+      setSessionCache(cacheKey, result, this.searchTtlMs);
       return result;
 
     } catch (e: any) {

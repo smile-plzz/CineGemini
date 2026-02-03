@@ -21,6 +21,7 @@ import NewsSection from './components/NewsSection';
 import NowPlayingCarousel from './components/NowPlayingCarousel';
 
 import { movieService, SearchFilters } from './services/movieService';
+import { readSessionValue, writeSessionValue } from './services/sessionCache';
 
 
 
@@ -67,6 +68,7 @@ const App: React.FC = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
   const [watchHistory, setWatchHistory] = useState<WatchHistory[]>([]);
+  const [continueWatching, setContinueWatching] = useState<WatchHistory[]>([]);
 
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
@@ -80,11 +82,11 @@ const App: React.FC = () => {
 
     const savedVault = localStorage.getItem('cinevault-vault');
 
-    const savedLogs = localStorage.getItem('cinevault-logs');
+    const savedLogs = readSessionValue<WatchHistory[]>('cinevault-logs');
 
     if (savedVault) try { setWatchlist(JSON.parse(savedVault)); } catch (e) {}
 
-    if (savedLogs) try { setWatchHistory(JSON.parse(savedLogs)); } catch (e) {}
+    if (savedLogs) setWatchHistory(savedLogs);
 
   }, []);
 
@@ -92,7 +94,11 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('cinevault-vault', JSON.stringify(watchlist)); }, [watchlist]);
 
-  useEffect(() => { localStorage.setItem('cinevault-logs', JSON.stringify(watchHistory)); }, [watchHistory]);
+  useEffect(() => { writeSessionValue('cinevault-logs', watchHistory); }, [watchHistory]);
+
+  useEffect(() => {
+    setContinueWatching(watchHistory.slice(0, 8));
+  }, [watchHistory]);
 
 
 
@@ -210,17 +216,37 @@ const App: React.FC = () => {
 
 
 
-  const addToHistory = (m: Movie) => {
+  const addToHistory = (m: Movie, progress?: { season?: number; episode?: number; serverId?: string }) => {
 
     setWatchHistory(prev => {
 
       const filtered = prev.filter(item => item.id !== m.id);
 
-      return [{ ...m, watchedAt: Date.now() }, ...filtered].slice(0, 20);
+      return [{
+        ...m,
+        watchedAt: Date.now(),
+        lastSeason: progress?.season,
+        lastEpisode: progress?.episode,
+        lastServerId: progress?.serverId
+      }, ...filtered].slice(0, 20);
 
     });
 
   };
+
+  const handleProgressUpdate = useCallback((movie: Movie, progress: { season?: number; episode?: number; serverId?: string }) => {
+    setWatchHistory(prev => {
+      const existing = prev.find(item => item.id === movie.id);
+      const merged: WatchHistory = {
+        ...movie,
+        watchedAt: Date.now(),
+        lastSeason: progress.season ?? existing?.lastSeason,
+        lastEpisode: progress.episode ?? existing?.lastEpisode,
+        lastServerId: progress.serverId ?? existing?.lastServerId
+      };
+      return [merged, ...prev.filter(item => item.id !== movie.id)].slice(0, 20);
+    });
+  }, []);
 
 
 
@@ -362,6 +388,22 @@ const App: React.FC = () => {
 
             <>
 
+              {activeTab === 'home' && !searchQuery && continueWatching.length > 0 && (
+
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-black uppercase tracking-widest text-white">Continue Watching</h3>
+                    <button onClick={() => handleTabChange('history')} className="text-[10px] uppercase font-bold text-blue-400 hover:text-blue-300">View Logs</button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                    {continueWatching.map(m => (
+                      <MovieCard key={`${m.id}-continue`} movie={m} onClick={(movie) => { setSelectedMovie(movie); }} onWatchlistToggle={toggleWatchlist} isInWatchlist={isInWatchlist(m.id)} />
+                    ))}
+                  </div>
+                </section>
+
+              )}
+
               {activeTab === 'home' && !searchQuery && (
 
                 <NowPlayingCarousel onSelectMovie={setSelectedMovie} />
@@ -490,7 +532,13 @@ const App: React.FC = () => {
 
       )}
 
-      {streamingMovie && <VideoPlayer movie={streamingMovie} onClose={() => setStreamingMovie(null)} />}
+      {streamingMovie && (
+        <VideoPlayer
+          movie={streamingMovie}
+          onClose={() => setStreamingMovie(null)}
+          onProgress={handleProgressUpdate}
+        />
+      )}
 
     </div>
 
