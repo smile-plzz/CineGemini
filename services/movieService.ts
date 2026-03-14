@@ -57,7 +57,7 @@ export class MovieService {
       Return a JSON array of objects with fields: title, year, rating (0.0 to 10.0), description (3 sentences), genre (array), director, cast (array), runtime, contentType (movie or tv).`;
 
       const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
           responseMimeType: "application/json",

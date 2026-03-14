@@ -25,14 +25,14 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
   const [imgError, setImgError] = useState(false);
 
   // Robust Data Handling
-  const rating = typeof movie.rating === 'number' ? movie.rating.toFixed(1) : "N/A";
-  const releaseYear = movie.year || (movie.first_air_date ? new Date(movie.first_air_date).getFullYear() : 'N/A');
-  const primaryGenre = movie.genre_ids && movie.genre_ids.length > 0 ? getGenreName(movie.genre_ids[0]) : "Unknown";
+  const rating = typeof movie.rating === 'number' ? movie.rating.toFixed(1) : (movie.rating || "N/A");
+  const releaseYear = movie.year || 'N/A';
+  const primaryGenre = movie.genre && movie.genre.length > 0 ? movie.genre[0] : "Unknown";
   
-  // Dynamic Color for Rating
   const ratingColor = useMemo(() => {
-    if (movie.rating >= 7.5) return "text-green-400";
-    if (movie.rating >= 5) return "text-yellow-400";
+    const numRating = parseFloat(String(movie.rating));
+    if (numRating >= 7.5) return "text-green-400";
+    if (numRating >= 5) return "text-yellow-400";
     return "text-red-400";
   }, [movie.rating]);
 
@@ -80,8 +80,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, onWatchlistToggle
            {/* Mini Metadata in Overlay */}
            <div className="flex gap-2 mb-4">
               <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white/70">{primaryGenre}</span>
-              {movie.original_language && (
-                <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white/70 uppercase">{movie.original_language}</span>
+              {releaseYear && releaseYear !== 'N/A' && (
+                <span className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-white/70 uppercase">{releaseYear}</span>
               )}
            </div>
 

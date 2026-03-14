@@ -225,7 +225,7 @@ const SERVERS: StreamingServer[] = [
 
 
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ movie, onClose, onProgress }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tmdbId = movie.tmdbId || movie.id;
   const isTV = movie.contentType === 'tv' || !!movie.first_air_date; // Robust check
